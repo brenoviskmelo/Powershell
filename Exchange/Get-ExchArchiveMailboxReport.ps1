@@ -8,18 +8,20 @@
     como a porcentagem de uso em relação à cota definida.
 
 .VERSION
-    1.0.0
+    1.1.0
 
 .NOTES
     Autor : Breno Melo
 
     Histórico de alterações:
         1.0.0 (09/10/2026) - Criação do script.
+        1.1.0 (12/10/2026) - Alterado o nome da pasta de exportação do relatório de PSLog para PSReport.
+                           - O relatório deixou de ser salvo em C:\PSLog e passou a ser gravado na pasta de execução do script.
 #>
 
+# Bloco 1: Instala, atualiza e importa o módulo Exchange Online Management para iniciar a sessão.
 # -------------------------------------------------------------------------------------------------------------------
 
-# Instala, atualiza e importa o módulo Exchange Online Management.
 try {
     $installedModule = Get-InstalledModule ExchangeOnlineManagement -ErrorAction SilentlyContinue
 
@@ -51,7 +53,7 @@ try {
     return
 }
 
-# Solicita a conta de usuário para conexão com o Exchange Online.
+# Solicita a conta de usuário com perfil administrativo para conexão com o Exchange Online.
 do {
     $inputMailAddress = Read-Host "`nDigite o e-mail da conta de usuário para conexão com Exchange"
 
@@ -78,7 +80,7 @@ try {
         Where-Object { $_.Name -match 'ExchangeOnline' -and $_.State -eq 'Connected' }
 
     if (-not $connection) {
-        throw "Não foi possível confirmar uma sessão conectada ao Exchange Online."
+        throw "Não foi possível estabelecer uma sessão com o Exchange Online."
     } else {
         Write-Host "Conexão com Exchange Online estabelecida com sucesso!" -ForegroundColor Green
     }
@@ -87,6 +89,7 @@ try {
     return
 }
 
+# Bloco 2: Consulta todas as caixas de correio com Archive habilitado e coleta informações detalhadas.
 # -------------------------------------------------------------------------------------------------------------------
 
 # Extrai bytes do formato de texto do Exchange
@@ -158,21 +161,24 @@ try {
         return
 }
 
+# Bloco 3: Gera visualização em Grid View e exporta relatório para CSV.
+# -------------------------------------------------------------------------------------------------------------------
+
 # Define o caminho e o nome do arquivo de log.
-$logPath = "C:\PSLog"
-$logFile = "Mailboxes_with_archive_enabled_$(Get-Date -Format "yyyyMMdd_HHmmss").csv"
-$logPathFile = Join-Path $logPath $logFile
+$reportPath = "$PSScriptRoot\PSReport"
+$reportFile = "Get-ExchArchiveMailboxReport_$(Get-Date -Format "yyyyMMdd_HHmmss").csv"
+$reportPathFile = Join-Path $reportPath $reportFile
 
 try {
     # Cria a pasta de log, caso ela ainda não exista.
-    if (-not (Test-Path -LiteralPath $logPath -ErrorAction Stop)) {
-        New-Item -ItemType Directory -Path $logPath -Force -ErrorAction Stop | Out-Null
+    if (-not (Test-Path -LiteralPath $reportPath -ErrorAction Stop)) {
+        New-Item -ItemType Directory -Path $reportPath -Force -ErrorAction Stop | Out-Null
     }
 
     # Ordena pelo tamanho do Archive, do maior para o menor.
     $Report = $Report | Sort-Object -Property SizeArchive_GB -Descending
 
-    # A falha do Grid View é avisada, mas não impede a exportação do CSV.
+    # Exibi o relatório em Grid View. A falha do Grid View é avisada, mas não impede a exportação do CSV.
     try {
         $Report | Out-GridView -Title "Contas com Archive - Ordenado por Tamanho do Archive (descendente)" -ErrorAction Stop
     } catch {
@@ -180,18 +186,17 @@ try {
     }
 
     # Exporta o relatório completo para CSV.
-    $Report | Export-Csv -Path $logPathFile -NoTypeInformation -Encoding UTF8 -ErrorAction Stop
+    $Report | Export-Csv -Path $reportPathFile -NoTypeInformation -Encoding UTF8 -ErrorAction Stop
 
-    Write-Host "Concluído!" -ForegroundColor Green
-    Write-Host "Relatório salvo em $logPathFile."
+    Write-Host "`nConcluído!" -ForegroundColor Green
+    Write-Host "Relatório salvo em $($reportPathFile)."
     Write-Host "Total de contas processadas: $($Report.Count)"
 } catch {
     Write-Error "Erro ao gerar ou exportar o relatório: $($_.Exception.Message)"
 }
 
+# Bloco 4: Encerra sessão do Exchange Online, caso o usuário deseje.
 # -------------------------------------------------------------------------------------------------------------------
-
-## Encerra sessão como Exchange Online, caso o usuário deseje.
 do { 
     $inputExist = Read-Host "`nDeseja encerrar a sessão do Exchange Online? (S/N)"
     
@@ -204,12 +209,14 @@ do {
             Write-Host "Conexão encerrada!" -ForegroundColor Green
         } else {
             Write-Host "Manter conexão ativa." -ForegroundColor Yellow
-
         }
-
+        
         $isValid = $true
     } else {
         Write-Warning "Resposta inválida! Digite S ou N."
         $isValid = $false
     }
+    
+    Write-Host ""
+
 } while (-not $isValid)
