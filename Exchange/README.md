@@ -25,13 +25,18 @@ Esta pasta contém ferramentas e scripts de automação PowerShell para a admini
 
 ---
 
-### 2. 📄 Nome-Do-Segundo-Script.ps1
-* **Descrição:** Breve explicação do que o segundo script faz.
+### 2. 📄 Get-ExchSizeFolderReport.ps1
+* **Descrição:** Conecta-se ao Exchange Online e gera um relatório do tamanho das pastas de uma caixa de correio, incluindo o Archive quando estiver habilitado.
 * **Versão:** `1.0.0`
 * **Como Executar:**
   ```powershell
-  .\Nome-Do-Segundo-Script.ps1 -Parametro X
+  .\Get-ExchSizeFolderReport.ps1
   ```
+* **Funcionamento:** Solicita a conta usada para conectar ao Exchange Online e o endereço da caixa a consultar. Exibe os resultados em `Out-GridView` e salva o CSV na pasta `PSReport`, junto ao script.
+* **Pré-requisitos:**
+  - Módulo `ExchangeOnlineManagement`, instalado pelo script se necessário; é preciso acesso à PowerShell Gallery para instalar ou atualizar o módulo.
+  - Conta autorizada a conectar-se ao Exchange Online e consultar as estatísticas da caixa de correio informada.
+  - `Out-GridView` para a visualização interativa. Se não estiver disponível ou falhar, o script avisa e continua tentando exportar o CSV.
 
 ---
 
