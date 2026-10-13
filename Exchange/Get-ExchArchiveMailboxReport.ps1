@@ -8,15 +8,17 @@
     como a porcentagem de uso em relação à cota definida.
 
 .VERSION
-    1.1.0
+    1.1.1
 
 .NOTES
     Autor : Breno Melo
+    E-mail: bmmelo@hotmail.com
 
     Histórico de alterações:
         1.0.0 (09/10/2026) - Criação do script.
         1.1.0 (12/10/2026) - Alterado o nome da pasta de exportação do relatório de PSLog para PSReport.
                            - O relatório deixou de ser salvo em C:\PSLog e passou a ser gravado na pasta de execução do script.
+        1.1.1 (13/10/2026) - Adicionada tratativa de erro para a desconexão do Exchange Online.
 #>
 
 # Bloco 1: Instala, atualiza e importa o módulo Exchange Online Management para iniciar a sessão.
@@ -164,13 +166,13 @@ try {
 # Bloco 3: Gera visualização em Grid View e exporta relatório para CSV.
 # -------------------------------------------------------------------------------------------------------------------
 
-# Define o caminho e o nome do arquivo de log.
+# Define o caminho e o nome do arquivo de report.
 $reportPath = "$PSScriptRoot\PSReport"
 $reportFile = "Get-ExchArchiveMailboxReport_$(Get-Date -Format "yyyyMMdd_HHmmss").csv"
 $reportPathFile = Join-Path $reportPath $reportFile
 
 try {
-    # Cria a pasta de log, caso ela ainda não exista.
+    # Cria a pasta de report, caso ela ainda não exista.
     if (-not (Test-Path -LiteralPath $reportPath -ErrorAction Stop)) {
         New-Item -ItemType Directory -Path $reportPath -Force -ErrorAction Stop | Out-Null
     }
@@ -205,8 +207,12 @@ do {
     if ($inputExist -match "^[sn]$") {
 
         if ($inputExist -eq 's') {
-            Disconnect-ExchangeOnline -Confirm:$false
-            Write-Host "Conexão encerrada!" -ForegroundColor Green
+            try {
+                Disconnect-ExchangeOnline -Confirm:$false -ErrorAction Stop
+                Write-Host "Conexão encerrada!" -ForegroundColor Green
+            } catch {
+                Write-Error "Erro ao encerrar a sessão do Exchange Online: $($_.Exception.Message)"
+            }
         } else {
             Write-Host "Manter conexão ativa." -ForegroundColor Yellow
         }
