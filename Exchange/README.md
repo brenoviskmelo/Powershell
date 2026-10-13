@@ -12,7 +12,7 @@ Esta pasta contém ferramentas e scripts de automação PowerShell para a admini
 
 ### 1. 📄 Get-ExchArchiveMailbox.ps1
 * **Descrição:** Conecta-se ao Exchange Online e gera um relatório de uso das caixas de correio com Archive ativado.
-* **Versão:** `1.1.0`
+* **Versão:** `1.1.1`
 * **Como Executar:**
   ```powershell
   .\Get-ExchArchiveMailbox.ps1
