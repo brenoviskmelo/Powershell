@@ -1,19 +1,20 @@
 ﻿<#
 .SYNOPSIS
-    Promover assistência remota a usuários, em ambiente corporativo, que utilizam Ambiente de Trabalho Remoto.
+    Promover assistência remota a usuários, em ambiente corporativo, que utilizam Ambiente de Trabalho Remoto (RDS/Host Session).
 
 .DESCRIPTION
     Atenção:
-        Executar script com privilégios administrativos no servidor de destino para assumir o controle da sessão.
-    
+        1. Executar script com privilégios administrativos no servidor de destino para assumir o controle da sessão.
+        2. Lista com o nome dos servidores deve ser definida manualmente atribuído à variável $servidores.
+
     Contexto:
-        Usuários com sessões RDP iniciadas em um Pool de Host Sessions, distribuídas por um Broker Server.
+        Usuários com sessões RDS iniciadas em um Pool de Host Sessions, distribuídas por um Broker Server.
     
     Destaques:
         1. Script solicita conta do usuário da rede, sessão é localizada em um dos servidores e assistência remota iniciada.
         2. Script não é encerrado ao fim de uma assistência, permitindo início de nova assistência em sequência.
         3. As assistências são registradas em arquivos de log.
-
+       
 .VERSION
     1.0.0
 
@@ -27,16 +28,31 @@
 
 # Bloco 1: Define caminho, nome do arquivo de log e cria pasta para os logs.
 # -------------------------------------------------------------------------------------------------------------------
-$logPath = "$PSScriptRoot\PSLog"
-$logFile = "Start-RemoteAssist_$((Get-Date).ToString('yyyyMMdd_HHmmss')).log"
-$logPathFile = Join-Path $logPath $logFile
-
 try {
+    $currentPath = if ($PSScriptRoot) {
+        # Caminho onde o arquivo foi salvo.
+        $PSScriptRoot
+    }
+    else {
+         # Pasta atual do terminal ($PWD) caso $PSCommandPath estiver vazio.
+        $currentPath = if ([string]::IsNullOrEmpty($PSCommandPath)) {
+             $PWD.Path
+        } 
+        else { 
+            Split-Path -Parent $PSCommandPath 
+        }
+    }
+
+    $logPath = Join-Path $currentPath "PSLog"
+    $logFile = "Start-RemoteAssist_$((Get-Date).ToString('yyyyMMdd_HHmmss')).log"
+    $logPathFile = Join-Path $logPath $logFile
+
     # Cria a pasta de log, caso ela ainda não exista.
     if (-not (Test-Path $logPath -ErrorAction Stop)) {
         New-Item -ItemType Directory -Path $logPath -Force -ErrorAction Stop | Out-Null
     }
-} catch {
+} 
+catch {
     Write-Error "Erro ao criar pasta de log: $($_.Exception.Message)"
     return
 }
@@ -57,12 +73,13 @@ function Write-Log {
     }
 }
 
+# Bloco 2: 
 # ----------------------------------------------------------------------------------------------------------------------
 
 $countSession = 1
 
 # Lista de servidores para localizar a sessão do usuário.
-$servidores = @("f10ts01", "f10ts02")
+$servidores = @("server1", "server2")
 
 while ($true) {
     # Solicita o nome do usuário com instrução de saída.
@@ -70,7 +87,7 @@ while ($true) {
     Write-Host "------------------------------------------------------" -ForegroundColor Cyan
     Write-Host "Digite 'sair' a qualquer momento para fechar o script." -ForegroundColor DarkGray
    
-    $userName = Read-Host -Prompt "`nIntroduza a conta do usuário (ex: administ.marf)"
+    $userName = Read-Host -Prompt "`nInforme a conta do usuário (ex: administ1)"
     $userName = $userName.Trim()
 
     # Verifica se o usuário deseja sair do script.
@@ -147,8 +164,7 @@ while ($true) {
                                                
                         # Iniciar a sessão RDP Shadow com o /no_consent_prompt incluído
                         Write-Log  "I" "Iniciando a ligação remota shadow..." 
-                        Write-Host "`nIniciando a ligação remota shadow..." -ForegroundColor Yellow
-                        Write-Host "`n"
+                        Write-Host "`nIniciando a ligação remota shadow..." -ForegroundColor Green
                         
                         try {
                             # Inicia o processo mstsc
@@ -165,7 +181,7 @@ while ($true) {
 
                                 Write-Log "I" "Tempos de sessão $($statusProcesso.StartTime) - $($statusProcesso.ExitTime)"
                                 Write-Log "F" "Conexão remota com $($userName) encerrada."
-                                Write-Host "Conexão remota com $($userName) encerrada."
+                                Write-Host "Conexão remota com $($userName) encerrada." -ForegroundColor Yellow
                                 
                                 $countSession += 1
 
